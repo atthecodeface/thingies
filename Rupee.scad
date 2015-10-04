@@ -40,7 +40,7 @@ module diamond( width=20, ridge_length=5, body_length=25, peak_length=55, height
     }        
 }
 
-module diamond_shell( width=20, ridge_length=5, body_length=25, peak_length=55, height=30, truncation=15, shell_thickness=3 )
+module diamond_shell( width=20, ridge_length=5, body_length=25, peak_length=55, height=30, truncation=15, shell_thickness=3.5 )
 {
     difference()
     {
@@ -101,6 +101,6 @@ union()
     translate([10,0,0]) difference()
     {
         cylinder( h=truncation, r=axle_support_radius, $fn=20 );
-        #z_neg_axle( length=13*2 ); // z_neg_axle is centred on x=y=0
+        z_neg_axle( length=13*2 ); // z_neg_axle is centred on x=y=0
     }
 }

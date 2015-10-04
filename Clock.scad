@@ -67,14 +67,14 @@ module z_neg_axle(X_clearance=1.9, length) {
 
 //a Connector and pegs/holes
 //m connector
-module connector()
+module connector(bearing_ring)
 {
     union()
     {
-        cylinder( r=connector_radius, h=connector_thickness );
+        cylinder( r=connector_radius, h=connector_thickness+bearing_ring );
         for (i=[0:num_connector_pegs-1])
         {
-            translate([0,0,connector_thickness])
+            translate([0,0,connector_thickness+bearing_ring])
             rotate([0,0,i*360/num_connector_pegs])
                 translate([connector_circle_radius,0,0])
                 cylinder( r=connector_peg_radius, h=connector_peg_thickness );
@@ -87,13 +87,13 @@ module connector_peg_holes( thickness=connector_thickness )
     {
         rotate([0,0,i*360/num_connector_pegs])
             translate([connector_circle_radius,0,0])
-            cylinder( r=connector_peg_radius, h=thickness );
+            cylinder( r=connector_peg_radius, h=thickness*10 );
     }
 }
 
 //a Planetary gear stuff
 //m sun
-module sun( r, num_teeth, has_connector, thickness )
+module sun( r, num_teeth, has_connector, thickness, bearing_ring )
 {
     sun_gear_thickness = thickness*2*sun_disc_gear_thickness_ratio;
     difference()
@@ -102,14 +102,14 @@ module sun( r, num_teeth, has_connector, thickness )
         {
             gjs_gear( r=r, num_teeth=num_teeth, thickness=sun_gear_thickness );
             translate([0,0,sun_gear_thickness]) cylinder(r=r+sun_disc_extra, h=thickness*2-sun_gear_thickness);
-            if (has_connector)
+            if (has_connector) // Connect from the sun to the neighboring ring
             {
-                rotate([180,0,0]) connector();
+                rotate([180,0,0]) connector(bearing_ring);
             }
         }
         if (has_connector)
         {
-            translate([0,0,-thickness]) cylinder( r=axle_hole_radius, h=thickness*10);
+            translate([0,0,-thickness-bearing_ring]) cylinder( r=axle_hole_radius, h=thickness*10);
         }
         else
         {
@@ -137,36 +137,58 @@ module planet_pairs( r1, num1_teeth, thickness1, r2, num2_teeth, thickness2, num
                   translate([0,0,thickness1])
                       gjs_gear( r=r2, num_teeth=num2_teeth, thickness=thickness2-planet_support_thickness );
               }
-              translate([0,0,-thickness1]) cylinder( r=planet_hole_radius, h=(thickness1+thickness2)*2 ); // hole in planets
+              union ()
+              {
+                   translate([-planet_hole_radius*3.0,0,-thickness1]) cylinder( r=planet_hole_radius/2.0, h=thickness1*3/2 ); // Marker hole
+                   translate([0,0,-thickness1]) cylinder( r=planet_hole_radius, h=(thickness1+thickness2)*2 ); // hole in planets
+              }
           }
       }
     }
 }
 
 //m ring
-module ring( r, num_teeth, thickness, ring_thickness, bore_radius, base_thickness=0, base_below=true, planets_orbit_r, hand_length=0, has_supports=false, has_connector_holes=false )
+module ring( r, num_teeth, thickness, ring_thickness, bore_radius, base_thickness=0, base_below=true, planets_orbit_r, hand_length=0, has_supports=false, has_connector_holes=false, bearing_ring=0 )
 {                                               
     ring_circle_offset = r*ring_circle_ratio;
     circle_space_available = 2*3.14*ring_circle_offset;
-    circle_radius = (circle_space_available/num_ring_circles-ring_circle_gap*2)/2;
+    circle_radius = (num_ring_circles>0) ? (circle_space_available/num_ring_circles-ring_circle_gap*2)/2 : 0;
     color([0.3,0.3,0.8])
     union()
     {
-        if (base_thickness>0)
+        if (base_thickness>0) // Base of the ring - possible with connector holes to help it turn, and with bearing ring
         {
             translate([0,0,(base_below?(-base_thickness):thickness)])
             {
                 difference()
                 {
-                    cylinder( r=r+ring_thickness, h=base_thickness );
-                    translate([0,0,-base_thickness])
+                    union()
                     {
-                        cylinder( r=bore_radius, h=base_thickness*3 );
+                        if (bearing_ring>0) {
+                            translate([0,0,(base_below?(-bearing_ring):0)])
+                            difference()
+                            {
+                                cylinder( r=r+ring_thickness, h=bearing_ring+base_thickness );
+                                {
+                                    translate([0,0,(base_below?-bearing_ring:base_thickness)])
+                                    rotate_extrude(convexity = 10)
+                                        translate([r/2, 0, 0])
+                                        square(bearing_ring*2+0.1);
+                                }
+                            }
+                        } else {
+                                cylinder( r=r+ring_thickness, h=base_thickness );
+                        }
+                    }
+
+                    translate([0,0,-base_thickness-bearing_ring])
+                    {
+                        cylinder( r=bore_radius, h=(base_thickness+bearing_ring)*3 );
                         for (i=[0:num_ring_circles-1])
                         {
                             rotate([0,0,i*360/num_ring_circles])
                                 translate([ring_circle_offset,0,0])
-                                cylinder( r=circle_radius, h=base_thickness*3 );
+                                cylinder( r=circle_radius, h=(base_thickness+bearing_ring)*3 );
                         }
                     }
                     if (has_connector_holes)
@@ -176,7 +198,7 @@ module ring( r, num_teeth, thickness, ring_thickness, bore_radius, base_thicknes
                 }
             }
         }
-        if (hand_length>0) 
+        if (hand_length>0) // Add hands
         {
             translate([r+ring_thickness*0.9,-hand_width/2,base_below?(-base_thickness):thickness-base_thickness]) cube( [hand_length, hand_width, thickness] );
         }
@@ -189,22 +211,22 @@ module ring( r, num_teeth, thickness, ring_thickness, bore_radius, base_thicknes
                 {
                     union()
                     {
-                        translate([r+ring_thickness*0.9,-support_width/2,base_below?(-base_thickness):thickness-base_thickness])
-                            cube( [support_length, support_width, support_thickness] );
-                        translate([r+ring_thickness+support_length,0,base_below?(-base_thickness):thickness-base_thickness])
-                            cylinder( r=axle_hole_radius+2, h=support_thickness );
+                        translate([r+ring_thickness*0.9,-support_width/2,base_below?(-base_thickness-bearing_ring):thickness-base_thickness])
+                            cube( [support_length, support_width, support_thickness+bearing_ring] );
+                        translate([r+ring_thickness+support_length,0,base_below?(-base_thickness-bearing_ring):thickness-base_thickness])
+                            cylinder( r=axle_hole_radius+2, h=support_thickness+bearing_ring );
                     }
                     translate([r+ring_thickness+support_length,0,base_below?(-base_thickness):thickness-base_thickness])
                         #z_neg_axle( length=support_thickness*3 );
                 }
             }
         }
-        difference()
+        difference() // Main body of the ring - cylinder with large gear removed
         {
             cylinder( r=r+ring_thickness, h=thickness );
             rotate([0,0,180/num_teeth]) translate([0,0,-thickness])gjs_gear( r=r, num_teeth=num_teeth, thickness=thickness*3, dp=dp_ring, is_ring=true );
         }
-        if (planet_support_thickness>0)
+        if (planet_support_thickness>0) // Removed from the main ring, this is a 'support' for the planets which means the planets don't rub on the whole main ring - just the planet support
         {
             translate([0,0,base_below?-base_thickness:thickness+base_thickness])
                 rotate([base_below?0:180,0,0])
@@ -265,7 +287,8 @@ module rotating_ring( sun_angle, sun_has_connector, ring2_has_connector_holes, s
             sun( r=sun_r,
                  num_teeth=sun_teeth,
                  has_connector = sun_has_connector,
-                 thickness=thickness );
+                 thickness=thickness,
+                bearing_ring=2);
     }
 
     //b Planets
@@ -297,7 +320,8 @@ module rotating_ring( sun_angle, sun_has_connector, ring2_has_connector_holes, s
                                                          planets_orbit_r = planets_orbit_r,
                                                          hand_length = 0,
                                                          has_supports = true,
-                                                         has_connector_holes = false );
+                                                         has_connector_holes = false,
+                                                         bearing_ring = 2 );
     }
 
     //b Ring 2
@@ -316,7 +340,8 @@ module rotating_ring( sun_angle, sun_has_connector, ring2_has_connector_holes, s
                                                   planets_orbit_r = planets_orbit_r,
                                                   hand_length = hand_length,
                                                   has_supports = false,
-                                                  has_connector_holes = ring2_has_connector_holes );
+                                                  has_connector_holes = ring2_has_connector_holes,
+                                                  bearing_ring = 2 );
     }
 
     //b All done
@@ -380,8 +405,8 @@ backlash=0.25; // amount of space to accommodate build issues
 clearance=0.5; // how much space to provide by moving the rim in
 
 clock_diameter = 100;
-thickness=2;
-base_thickness=1;
+thickness      = 2.9; // Average thickness of planet gears - two of these plus base is a 'slice' - use to be 2
+base_thickness = 1; // Thickness of base of each ring
 axle_hole_radius=2.85;
 hour_hand_length = 5;
 minute_hand_length = 10;
@@ -394,7 +419,7 @@ support_thickness = base_thickness+thickness;
 sun_disc_gear_thickness_ratio = 0.6; // fraction of sun gear that is gear rather than disc
 sun_disc_extra    = 0.7; // extra amount in mm around the sun for the disc
 
-planet_hole_radius = 1.5;      //  radius of hole in center of planet pair
+planet_hole_radius = 3.0;      //  radius of hole in center of planet pair - used to be 1.5
 planet1_thickness_ratio = 0.9; // thickness of planet pair to allocate to lower planet (which should be LARGER)
 planet2_thickness_ratio = 2 - planet1_thickness_ratio; // thickness to allocate to upper planet - must sum to 2 with planet1_thickness_ratio
 planet_support_thickness = 0.3;    // added to the ring, removed from the planets
@@ -416,7 +441,7 @@ connector_peg_thickness = base_thickness;
 //a Build and animation constants
 //v Defaults
 draft = true;
-explosion = 0;
+explosion = 0; // Explode the Z axis
 time_scale = 60;
 sun_angle = 360*$t*time_scale;
 
@@ -430,17 +455,18 @@ show_minutes = false;
 show_hours   = false;
 
 //v Overrides for the build
+num_ring_circles = 0; // Lose ring circles
 draft = false;
-explosion = 0; // 0 for as parts
+explosion = 1; // 0 for as parts
 
-show_as_parts = 1;
-//show_sun     = true;
+//show_as_parts = 1;
+show_sun     = true;
 show_planets = true;
-//show_ring1   = true;
-//show_ring2   = true;
+show_ring1   = true;
+show_ring2   = true;
 
 show_minutes = true;
-//show_hours   = true;
+show_hours   = true;
 
 //v Derived constants
 $fs = draft ? 2: 0.5; // minimum length of edge/etc in polygon from circle/sphere/cylinder
