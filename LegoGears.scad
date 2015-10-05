@@ -125,6 +125,16 @@ module planet_bars(length_units,
     }
 }
 
+//m lego_washer
+module lego_washer(height_units=lego_slat_height_units, axle_hole_type_hole=false)
+{
+    difference() {
+        z_axle_round(length=height*lego_unit);
+        translate([0,0,-1])
+            z_axle_hole_by_type(height=lego_unit*lego_slat_height_units*3, axle_hole_type_hole=axle_hole_type_hole);
+    }
+}
+
 //m lego_gear
 module lego_gear(gear_diameter_units, include_supports=true, height_units=lego_slat_height_units, axle_hole_type_hole=false)
 {
@@ -252,28 +262,33 @@ module planetary_gears(gears=[])
 }
 
 
-gearset = [ //[1.5*lego_width_units, [0,0,0], true],
-            //[2*lego_width_units,   [18,-5,0], true],
-            [2.5*lego_width_units, [40,-10,0], true],
-            [3*lego_width_units,   [65,0,0], true],
-            [3.5*lego_width_units, [40,25,0], true],
-            [4*lego_width_units,   [0,20,0], true],
-            [4.5*lego_width_units,   [0,-20,0], true],
+gears_have_holes = (1==0);
+gearset = [ //[1.5*lego_width_units, [0,0,0], gears_have_holes],
+            //[2*lego_width_units,   [18,-5,0], gears_have_holes],
+            //[2.5*lego_width_units, [40,-10,0], gears_have_holes],
+            //[3*lego_width_units,   [65,0,0], gears_have_holes],
+            [3.5*lego_width_units, [40,25,0], gears_have_holes],
+            [4*lego_width_units,   [0,20,0], gears_have_holes],
+            //[4.5*lego_width_units,   [0,-20,0], gears_have_holes],
 
-            //[1.5*lego_width_units, [72,22,0], false],
-            //[2*lego_width_units,   [54,22,0], false],
-            //[2.5*lego_width_units, [30,22,0], false],
-            //[3*lego_width_units,   [5,20,0], false],
     ];
-if (false) {
+if (true) {
     planetary_gears( gears=gearset );
     }
+if (true) {
+    for (i=[0,20,40,60]) {
+        translate([i+0,-5,0])   
+            lego_washer(axle_hole_type_hole=false);
+        translate([i+10,-5,0])   
+            lego_washer(axle_hole_type_hole=true);
+    }
+}
 
 barset = [ //[2*lego_width_units, [-30,0,0], 3, [[2*lego_width_units,false]]],
            //[3*lego_width_units, [0,0,0],   3, [[3*lego_width_units,false]]],
            [4*lego_width_units, [40,0,0],  3, [[2*lego_width_units,false], [4*lego_width_units,false]]],
        ];
-if (true) {
+if (false) {
     for (i=barset) {
         translate(i[1])
             planet_bars( length_units=i[0],
