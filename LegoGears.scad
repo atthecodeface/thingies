@@ -35,7 +35,9 @@ module gjs_gear( r, num_teeth, thickness, bore_radius=0,dp=dp_gear  )
 }
 
 //m z_neg_axle
-module z_neg_axle(X_clearance=1.9, length) {
+module z_neg_axle(length) {
+  // Was X_clearance=1.9; but this is too tight on prints of working lego gears
+  X_clearance=1.95;
   safe_diam = 5.4;
   safe_rad = 0.5 * safe_diam;
   linear_extrude(height = length,
@@ -87,7 +89,7 @@ module planet_bar( hole_center_length,
                 cube([hole_center_length,bar_width, height]);
         }
         for (i=axle_holes) {
-            translate([i[0],0,-height])
+            translate([i[0]*lego_unit,0,-height])
                 z_axle_hole_by_type(height=height*3, axle_hole_type_hole=i[1]);
         }
     }
@@ -263,6 +265,20 @@ gearset = [ //[1.5*lego_width_units, [0,0,0], true],
             //[2.5*lego_width_units, [30,22,0], false],
             //[3*lego_width_units,   [5,20,0], false],
     ];
-if (true) {
+if (false) {
     planetary_gears( gears=gearset );
     }
+
+barset = [ //[2*lego_width_units, [-30,0,0], 3, [[2*lego_width_units,false]]],
+           //[3*lego_width_units, [0,0,0],   3, [[3*lego_width_units,false]]],
+           [4*lego_width_units, [40,0,0],  3, [[2*lego_width_units,false], [4*lego_width_units,false]]],
+       ];
+if (true) {
+    for (i=barset) {
+        translate(i[1])
+            planet_bars( length_units=i[0],
+                         num_bars=i[2],
+                         axle_holes = i[3]
+                );
+    }
+}
